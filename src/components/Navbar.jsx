@@ -1,7 +1,10 @@
 "use client";
-import React, { useState } from "react";
-import { header_data } from "@/helper/data";
 import { Button } from "@/components/ui/button";
+import { header_data } from "@/helper/data";
+import { auth } from "@/lib/firebase";
+import { onAuthStateChanged, signOut } from "firebase/auth";
+import { useRouter } from "next/navigation"; // Import useRouter
+import { useEffect, useState } from "react";
 
 const lang = [
   { id: 1, lang: "🇬🇧 En", langText: "en" },
@@ -10,16 +13,41 @@ const lang = [
 
 const Navbar = () => {
   const [openLanguage, setOpenLanguage] = useState(false);
-  const [selectedLang, setSelectedLang] = useState(lang[0]); 
+  const [selectedLang, setSelectedLang] = useState(lang[0]);
+  const [user, setUser] = useState(null); // To store the current user
+  const router = useRouter(); // Initialize router
+
+  // Listen for authentication state changes
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser); // Update user state
+    });
+
+    return () => unsubscribe(); // Cleanup listener on component unmount
+  }, []);
 
   const handleLanguageSelect = (language) => {
     setSelectedLang(language);
-    setOpenLanguage(false); 
+    setOpenLanguage(false);
   };
 
-  console.log(selectedLang)
+  // Handle Login button click
+  const handleLoginClick = () => {
+    router.push("/admin/login"); // Navigate to Admin Login page
+  };
+
+  // Handle Logout button click
+  const handleLogoutClick = async () => {
+    try {
+      await signOut(auth); // Sign out the user
+      router.push("/"); // Redirect to home page
+    } catch (error) {
+      console.error("Logout failed:", error);
+    }
+  };
+
   return (
-    <div className="bg-black w-[100vw] ">
+    <div className="bg-black w-[100vw]">
       <div className="h-[10vh] max-w-[1280px] flex items-center mx-auto">
         <div className="flex w-full justify-between items-center">
           <h1 className="text-3xl text-white">logo</h1>
@@ -41,10 +69,18 @@ const Navbar = () => {
                 className="text-white text-sm flex items-center cursor-pointer"
                 onClick={() => setOpenLanguage(!openLanguage)}
               >
-                {selectedLang.lang} 
+                {selectedLang.lang}
               </li>
               <li>
-                <Button variant="gradient_bg">Register/Login</Button>
+                {user ? (
+                  <Button variant="gradient_bg" onClick={handleLogoutClick}>
+                    Logout
+                  </Button>
+                ) : (
+                  <Button variant="gradient_bg" onClick={handleLoginClick}>
+                    Login
+                  </Button>
+                )}
               </li>
 
               {openLanguage && (
@@ -53,8 +89,8 @@ const Navbar = () => {
                     {lang.map((item) => (
                       <li
                         key={item.id}
-                        onClick={() => handleLanguageSelect(item)} 
-                        className="flex items-center gap-2 hover:bg-gray-500 px-2  my-1  rounded-sm cursor-pointer"
+                        onClick={() => handleLanguageSelect(item)}
+                        className="flex items-center gap-2 hover:bg-gray-500 px-2 my-1 rounded-sm cursor-pointer"
                       >
                         {item.lang}
                       </li>

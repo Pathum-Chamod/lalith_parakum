@@ -3,7 +3,9 @@ import { Button } from "@/components/ui/button";
 import { header_data } from "@/helper/data";
 import { auth } from "@/lib/firebase";
 import { onAuthStateChanged, signOut } from "firebase/auth";
-import { useRouter } from "next/navigation"; // Import useRouter
+import Image from "next/image";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 const lang = [
@@ -14,16 +16,15 @@ const lang = [
 const Navbar = () => {
   const [openLanguage, setOpenLanguage] = useState(false);
   const [selectedLang, setSelectedLang] = useState(lang[0]);
-  const [user, setUser] = useState(null); // To store the current user
-  const router = useRouter(); // Initialize router
+  const [user, setUser] = useState(null);
+  const router = useRouter();
 
-  // Listen for authentication state changes
+  // Monitor Authentication State
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      setUser(currentUser); // Update user state
+      setUser(currentUser);
     });
-
-    return () => unsubscribe(); // Cleanup listener on component unmount
+    return () => unsubscribe();
   }, []);
 
   const handleLanguageSelect = (language) => {
@@ -31,16 +32,15 @@ const Navbar = () => {
     setOpenLanguage(false);
   };
 
-  // Handle Login button click
   const handleLoginClick = () => {
-    router.push("/admin/login"); // Navigate to Admin Login page
+    router.push("/admin/login");
   };
 
-  // Handle Logout button click
   const handleLogoutClick = async () => {
     try {
-      await signOut(auth); // Sign out the user
-      router.push("/"); // Redirect to home page
+      await signOut(auth);
+      setUser(null); // Clear user state
+      router.push("/"); // Redirect to Home
     } catch (error) {
       console.error("Logout failed:", error);
     }
@@ -50,27 +50,66 @@ const Navbar = () => {
     <div className="bg-black w-[100vw]">
       <div className="h-[10vh] max-w-[1280px] flex items-center mx-auto">
         <div className="flex w-full justify-between items-center">
-          <h1 className="text-3xl text-white">logo</h1>
+          {/* Logo */}
+          <div className="flex items-center">
+            <Image
+              src="/logo.png"
+              alt="Logo"
+              width={50}
+              height={50}
+              className="cursor-pointer"
+              onClick={() => router.push("/")}
+            />
+          </div>
+
+          {/* Navigation Links */}
           <div>
             <ul className="flex items-center gap-6">
-              {header_data.map((item) => (
-                <li
-                  key={item.id}
-                  className="text-white cursor-pointer hover:text-gray-500 font-semibold transition-all duration-200"
-                >
-                  {item.title}
+              {header_data.map((item) =>
+                item.title === "Home" ? (
+                  <li key={item.id}>
+                    <Link
+                      href="/"
+                      className="text-white cursor-pointer hover:text-gray-500 font-semibold transition-all duration-200"
+                    >
+                      {item.title}
+                    </Link>
+                  </li>
+                ) : (
+                  <li
+                    key={item.id}
+                    className="text-white cursor-pointer hover:text-gray-500 font-semibold transition-all duration-200"
+                  >
+                    {item.title}
+                  </li>
+                )
+              )}
+              {/* Dashboard Tab: Visible only for logged-in users */}
+              {user && (
+                <li>
+                  <Link
+                    href="/admin/dashboard"
+                    className="text-white cursor-pointer hover:text-gray-500 font-semibold transition-all duration-200"
+                  >
+                    Dashboard
+                  </Link>
                 </li>
-              ))}
+              )}
             </ul>
           </div>
+
+          {/* Language and Login/Logout Buttons */}
           <div>
             <ul className="flex items-center gap-4 relative">
+              {/* Language Selector */}
               <li
                 className="text-white text-sm flex items-center cursor-pointer"
                 onClick={() => setOpenLanguage(!openLanguage)}
               >
                 {selectedLang.lang}
               </li>
+
+              {/* Login/Logout Button */}
               <li>
                 {user ? (
                   <Button variant="gradient_bg" onClick={handleLogoutClick}>
@@ -83,6 +122,7 @@ const Navbar = () => {
                 )}
               </li>
 
+              {/* Language Dropdown */}
               {openLanguage && (
                 <div className="flex flex-col items-center justify-center w-24 z-50 absolute top-10 right-[115px] bg-black rounded-lg shadow-md">
                   <ul>

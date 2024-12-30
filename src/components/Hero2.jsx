@@ -1,22 +1,52 @@
 "use client";
-import React, { useState, useEffect } from "react";
-import Image from "next/image";
 import { glowEffect } from "@/helper/styles";
+import { db } from "@/lib/firebase"; // Import Firestore instance
+import { doc, getDoc } from "firebase/firestore";
+import Image from "next/image";
+import { useEffect, useRef, useState } from "react";
 
 const Hero2 = () => {
   const [activeIndex, setActiveIndex] = useState(0); // Track the current slide index
-  const slides = [
-    "https://images.unsplash.com/photo-1520706004450-f170ae7d8176?q=80&w=2940&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
-    "https://images.unsplash.com/photo-1526631134603-8d692d622f78?q=80&w=2940&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
-    "https://plus.unsplash.com/premium_photo-1681492529719-a1d3d8cc498a?q=80&w=2942&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
-  ];
+  const [slides, setSlides] = useState([]); // State for fetched slide URLs
+  const [loading, setLoading] = useState(true); // Loading state
+  const [error, setError] = useState(null); // Error state
+  const intervalRef = useRef(null);
 
+  // Fetch slides from Firestore
   useEffect(() => {
-    const interval = setInterval(() => {
-      setActiveIndex((prevIndex) => (prevIndex + 1) % slides.length);
-    }, 3000);
+    const fetchSlides = async () => {
+      setLoading(true);
+      try {
+        const docRef = doc(db, "SlideshowMain", "MainSlides"); // Document reference
+        const docSnap = await getDoc(docRef);
 
-    return () => clearInterval(interval); // Cleanup interval
+        if (docSnap.exists()) {
+          const data = docSnap.data();
+          const firebaseSlides = (data.slides || []).filter((slide) => slide.url); // Validate slides
+          setSlides(firebaseSlides);
+        } else {
+          console.error("No slides document found in Firestore!");
+          setError("No slides available. Please add slides from the admin dashboard.");
+        }
+      } catch (err) {
+        console.error("Error fetching slides from Firestore:", err);
+        setError("Failed to load slides. Please check your connection.");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchSlides();
+  }, []);
+
+  // Auto-rotate slides every 3 seconds
+  useEffect(() => {
+    if (slides.length > 0) {
+      intervalRef.current = setInterval(() => {
+        setActiveIndex((prevIndex) => (prevIndex + 1) % slides.length);
+      }, 3000);
+    }
+    return () => clearInterval(intervalRef.current); // Cleanup interval
   }, [slides.length]);
 
   const handleNext = () => {
@@ -29,8 +59,32 @@ const Hero2 = () => {
     );
   };
 
+  // Loading State
+  if (loading) {
+    return (
+      <div className="w-full h-[calc(100vh-80px)] flex items-center justify-center text-white">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-4 border-blue-500"></div>
+        <span className="ml-4 text-lg">Loading slides...</span>
+      </div>
+    );
+  }
+
+  // Error State or No Slides Available
+  if (error || slides.length === 0) {
+    return (
+      <div className="w-full h-[calc(100vh-80px)] flex items-center justify-center text-red-500 text-lg">
+        {error || "No slides available. Please upload slides from the admin panel."}
+      </div>
+    );
+  }
+
   return (
-    <div className="w-full h-[calc(100vh-80px)] relative overflow-hidden" style={glowEffect}>
+    <div
+      className="w-full h-[calc(100vh-80px)] relative overflow-hidden"
+      style={glowEffect}
+      role="region"
+      aria-label="Image Slideshow"
+    >
       <div className="h-full w-full flex items-center justify-center relative">
         {slides.map((slide, index) => (
           <div
@@ -40,26 +94,49 @@ const Hero2 = () => {
             }`}
           >
             <Image
-              src={slide}
+              src={slide.url || "/placeholder-image.png"} // Use slide.url or fallback
+              onError={(e) => (e.target.src = "/placeholder-image.png")} // Handle load errors
               alt={`Slide ${index + 1}`}
               className="w-full h-full object-cover"
               fill
+              loading={index === activeIndex ? "eager" : "lazy"} // Lazy load
+              priority={index === activeIndex} // Prioritize active slide
             />
           </div>
         ))}
- 
-        <button
-          onClick={handlePrevious}
-          className="absolute left-5 top-1/2 transform -translate-y-1/2 bg-black/50 text-white p-3 rounded-full z-20"
-        >
-          &#9664;
-        </button>
-        <button
-          onClick={handleNext}
-          className="absolute right-5 top-1/2 transform -translate-y-1/2 bg-black/50 text-white p-3 rounded-full z-20"
-        >
-          &#9654;
-        </button>
+
+        {/* Navigation Buttons */}
+        {slides.length > 1 && (
+          <>
+            <button
+              onClick={handlePrevious}
+              aria-label="Previous Slide"
+              className="absolute left-5 top-1/2 transform -translate-y-1/2 bg-black/50 text-white p-3 rounded-full z-20 hover:bg-black/70"
+            >
+              &#9664;
+            </button>
+            <button
+              onClick={handleNext}
+              aria-label="Next Slide"
+              className="absolute right-5 top-1/2 transform -translate-y-1/2 bg-black/50 text-white p-3 rounded-full z-20 hover:bg-black/70"
+            >
+              &#9654;
+            </button>
+          </>
+        )}
+      </div>
+
+      {/* Slide Dots */}
+      <div className="absolute bottom-5 w-full flex justify-center gap-2 z-20">
+        {slides.map((_, dotIndex) => (
+          <button
+            key={dotIndex}
+            onClick={() => setActiveIndex(dotIndex)}
+            className={`w-3 h-3 rounded-full ${
+              activeIndex === dotIndex ? "bg-blue-500" : "bg-gray-500"
+            }`}
+          />
+        ))}
       </div>
     </div>
   );

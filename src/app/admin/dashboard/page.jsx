@@ -1,21 +1,23 @@
 "use client";
-import { auth } from "@/lib/firebase";
-import { signOut } from "firebase/auth";
-import { useRouter } from "next/navigation";
+
+import ProfileManager from "@/components/crud/ProfileManager";
+import SlideshowManager from "@/components/crud/SlideshowManager";
 
 const AdminDashboard = () => {
-  const router = useRouter();
-
-  const handleLogout = async () => {
-    await signOut(auth);
-    router.push("/admin/login"); // Redirect back to login
-  };
-
   return (
-    <div className="h-screen flex items-center justify-center bg-gray-800 text-white">
-      <div>
-        <h1 className="text-3xl mb-4">Welcome to the Admin Dashboard!</h1>
-        {/* The logout button has been removed */}
+    <div className="p-8 bg-gray-800 text-white min-h-screen">
+      <h1 className="text-3xl font-bold mb-8">Admin Dashboard</h1>
+
+      {/* Main Slideshow Section */}
+      <div className="bg-gray-900 p-6 rounded-lg shadow-lg border border-gray-700 mb-8">
+        <h2 className="text-2xl font-semibold mb-4 text-center">Main Slideshow</h2>
+        <SlideshowManager collectionName="SlideshowMain" documentName="MainSlides" />
+      </div>
+
+      {/* Profile Section */}
+      <div className="bg-gray-900 p-6 rounded-lg shadow-lg border border-gray-700">
+        <h2 className="text-2xl font-semibold mb-4 text-center">Profile Section</h2>
+        <ProfileManager />
       </div>
     </div>
   );
